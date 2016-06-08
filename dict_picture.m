@@ -1,14 +1,10 @@
 clc;
-Y = zeros(64, 0);
-for i=0:10999
+Y = zeros(64, 11000);
+for i=1:11000
     yi = imread(sprintf('./patch/patch%d.png',i));
     yi = reshape(yi, numel(yi), 1);
     yi = im2double(yi);
-%     if ~isempty(find(yi))
-%         yi = (yi-mean(yi))./std(yi);
-%     end
-    %yi = (yi-mean(yi))./std(yi);
-    Y = [Y yi];
+    Y(:,i) = yi;
 end
 fprintf('ì«Ç›çûÇ›èIÇÌÇË\n');
 
@@ -23,27 +19,27 @@ for i=2:441
     D(:,i) = D(:,i)./norm(D(:,i));
 end
 
-for J=1:30
+for J=1:80
+    %X = omp(D, Y, D'*D, 10);
+    tic;
+    X = omp(D'*Y, D'*D, 10);
+    for i=1:441
+        idx = find(X(i,:));
+        if isempty(idx)
+            continue;
+        end
+        omega = zeros(11000, size(idx,2));
+        for j=1:size(idx,2)
+            omega(idx(j), j) = 1;
+        end
     
-X = omp(D, Y, D'*D, 10);
-for i=1:441
-    idx = find(X(i,:));
-    if isempty(idx)
-        continue;
+        Ek = Y - D*X + D(:,i)*X(i,:);
+        Ekr = Ek*omega;
+    
+        [U, S, V] = svd(Ekr);
+        D(:,i) = U(:,1);
+        X(i,:) = (omega*S(1,1)*V(:,1))';
     end
-    omega = zeros(20000, size(idx,2));
-    for j=1:size(idx,2)
-        omega(idx(j), j) = 1;
-    end
-    
-    Ek = Y - D*X + D(:,i)*X(i,:);
-    Ekr = Ek*omega;
-    
-    [U, S, V] = svd(Ekr);
-    D(:,i) = U(:,1);
-    X(i,:) = (omega*S(1,1)*V(:,1))';
-end
-
-fprintf('Iteration %d: %f\n', J, norm(Y-D*X));
-
+    elapsedTime = toc;
+    fprintf('Iteration %d: %f, ElapsedTime: %f\n', J, norm(Y-D*X), elapsedTime);
 end
